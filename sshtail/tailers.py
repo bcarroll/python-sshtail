@@ -17,17 +17,23 @@ class SSHTailer(object):
     def __init__(self, host, remote_filename, private_key=None, verbose=False):
         if '@' in host:
             self.username, self.host = tuple(host.split('@'))
+            if ':' in self.username: # uid/password authentication - bcarroll 4/23/2015
+                self.username, self.password = tuple(self.username.split(':')) # uid/password authentication - bcarroll 4/23/2015
+            host = self.username + '@' + self.host # redefine host to make sure password is removed - bcarroll 4/23/2015
         else:
             self.username, self.host = None, host
-        self.remote_filename = remote_filename
-        self.private_key = private_key
-        self.client = None
-        self.sftp_client = None
-        self.remote_file_size = None
-        self.line_terminators = ['\r', '\n', '\r\n']
+        
+        print "host:",host
+        print "self.host:",self.host
+        #quit()
+        self.remote_filename         = remote_filename
+        self.private_key             = private_key
+        self.client                  = None
+        self.sftp_client             = None
+        self.remote_file_size        = None
+        self.line_terminators        = ['\r', '\n', '\r\n']
         self.line_terminators_joined = '\r\n'
-
-        self.verbose = verbose
+        self.verbose                 = verbose
 
 
     def connect(self):
@@ -39,6 +45,8 @@ class SSHTailer(object):
         self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         if self.private_key:
             self.client.connect(self.host, username=self.username, pkey=self.private_key)
+        elif self.password is not None: # uid/password authentication - bcarroll 4/23/2015
+            self.client.connect(self.host, username=self.username, password=self.password) # uid/password authentication - bcarroll 4/23/2015
         else:
             self.client.connect(self.host, username=self.username)
 
@@ -113,11 +121,11 @@ class SSHMultiTailer(object):
         that must be tailed.
         """
 
-        self.host_files = host_files
+        self.host_files    = host_files
         self.poll_interval = poll_interval
-        self.private_key = private_key
-        self.tailers = {}
-        self.verbose = verbose
+        self.private_key   = private_key
+        self.tailers       = {}
+        self.verbose       = verbose
 
 
     def connect(self):
@@ -150,10 +158,18 @@ class SSHMultiTailer(object):
                 lines_read = 0
 
                 for host, tailers in self.tailers.iteritems():
+                    if '@' in host:
+                        self.username, self.host = tuple(host.split('@'))
+                        if ':' in self.username: # uid/password authentication - bcarroll 4/23/2015
+                            self.username, self.password = tuple(self.username.split(':')) # uid/password authentication - bcarroll 4/23/2015
+                        self.host = self.username + '@' + self.host # make sure password is not included in self.host - bcarroll 4/23/2015
+                    else:
+                        self.username, self.host = None, host
+        
                     for filename, tailer in tailers.iteritems():
                         # read as much data as we can from the file
                         for line in tailer.tail():
-                            yield host, filename, line
+                            yield self.host, filename, line
                             lines_read += 1
 
                 if not lines_read:
