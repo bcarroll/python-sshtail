@@ -22,10 +22,6 @@ class SSHTailer(object):
             host = self.username + '@' + self.host # redefine host to make sure password is removed - bcarroll 4/23/2015
         else:
             self.username, self.host = None, host
-        
-        print "host:",host
-        print "self.host:",self.host
-        #quit()
         self.remote_filename         = remote_filename
         self.private_key             = private_key
         self.client                  = None
