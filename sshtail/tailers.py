@@ -198,4 +198,3 @@ class SSHMultiTailer(object):
             print "Disconnected from hosts."
 
 
-
